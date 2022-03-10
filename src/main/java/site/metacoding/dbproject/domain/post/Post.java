@@ -5,6 +5,7 @@ import java.time.LocalDateTime;
 import javax.persistence.Column;
 import javax.persistence.Entity;
 import javax.persistence.EntityListeners;
+import javax.persistence.FetchType;
 import javax.persistence.GeneratedValue;
 import javax.persistence.GenerationType;
 import javax.persistence.Id;
@@ -38,8 +39,10 @@ public class Post {
     @Column(nullable = false)
     private String content;
 
+    // fetch type EAGER : 영속성 컨텍스트 null 값 불허
+    // getch type LAZY : 영속성 컨텍스트 null 값 허용
     @JoinColumn(name = "userId")
-    @ManyToOne
+    @ManyToOne(fetch = FetchType.EAGER)
     private User user;
 
     @CreatedDate // insert
