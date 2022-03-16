@@ -39,8 +39,6 @@ public class Post {
     @Column(nullable = false)
     private String content;
 
-    // fetch type EAGER : 영속성 컨텍스트 null 값 불허
-    // getch type LAZY : 영속성 컨텍스트 null 값 허용
     @JoinColumn(name = "userId")
     @ManyToOne(fetch = FetchType.EAGER)
     private User user;
