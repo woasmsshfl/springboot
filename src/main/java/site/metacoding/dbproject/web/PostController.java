@@ -10,6 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PathVariable;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestParam;
 import org.springframework.web.bind.annotation.ResponseBody;
 
@@ -65,17 +66,17 @@ public class PostController {
 
         Post postEntity = postService.글상세보기(id);
 
-        // 게시물이 없으면 error 페이지로 이동
+        // 게시물이 없으면 error 페이지 이동
         if (postEntity == null) {
             return "error/page1";
         }
 
         if (principal != null) {
-            // 권한 확인해서 view로 값을 넘김.
-            if (principal.getId() == postEntity.getUser().getId()) { // 권한 있음
+            // 권한 확인해서 view로 값 넘김
+            if (principal.getId() == postEntity.getUser().getId()) { // 권한이 있다는 뜻
                 model.addAttribute("pageOwner", true);
             } else {
-                model.addAttribute("pagrOwner", false);
+                model.addAttribute("pageOwner", false);
             }
         }
 
@@ -83,9 +84,25 @@ public class PostController {
         return "post/detail";
     }
 
-    // 글 수정 페이지 /post/{id}/updateForm - 인증 O
+    // Get 글 수정 페이지 /post/{id}/updateForm - 인증 O
     @GetMapping("/s/post/{id}/updateForm")
-    public String updateForm(@PathVariable Integer id) {
+    public String updateForm(@PathVariable Integer id, Model model) {
+
+        // 인증
+        User principal = (User) session.getAttribute("principal");
+        if (principal == null) {
+            return "error/page1";
+        }
+
+        // 권한
+        Post postEntity = postService.글상세보기(id);
+
+        if (postEntity.getUser().getId() != principal.getId()) {
+            return "error/page1";
+        }
+
+        model.addAttribute("post", postEntity);
+
         return "post/updateForm"; // ViewResolver 도움 받음.
     }
 
@@ -93,27 +110,44 @@ public class PostController {
     @DeleteMapping("/s/post/{id}")
     public @ResponseBody ResponseDto<String> delete(@PathVariable Integer id) {
 
+        // 인증과 권한체크
+        // 1. 인증 (세션필요)
         User principal = (User) session.getAttribute("principal");
-
-        if (principal == null) { // login 실패
-            return new ResponseDto<String>(-1, "로그인이 되지 않았습니다", null);
+        if (principal == null) { // 로그인이 안됐다는 뜻
+            return new ResponseDto<String>(-1, "로그인이 되지 않았습니다.", null);
         }
-
+        // 2. 권한
         Post postEntity = postService.글상세보기(id);
-
-        if (principal.getId() != postEntity.getUser().getId()) { // 권한 없음
-            return new ResponseDto<String>(-1, "해당 글을 삭제할 권한이 없습니다", null);
+        if (principal.getId() != postEntity.getUser().getId()) { // 권한이 없다는 뜻
+            return new ResponseDto<String>(-1, "해당 글을 삭제할 권한이 없습니다.", null);
         }
 
-        postService.글삭제하기(id); // 내부적으로 exception이 발생하면 무조건 StackTrace가 리턴된다.
+        postService.글삭제하기(id); // 내부적으로 exception이 터지면 무조건 스택 트레이스를 리턴한다.
 
         return new ResponseDto<String>(1, "성공", null);
     }
 
     // UPDATE 글수정 /post/{id} - 글상세보기 페이지가기 - 인증 O
     @PutMapping("/s/post/{id}")
-    public String update(@PathVariable Integer id) {
-        return "redirect:/post/" + id;
+    public @ResponseBody ResponseDto<String> update(
+            @PathVariable Integer id, @RequestBody Post post) {
+
+        // 인증
+        User principal = (User) session.getAttribute("principal");
+        if (principal == null) {
+            return new ResponseDto<String>(-1, "로그인 되지 않았습니다", null);
+        }
+
+        // 권한
+        Post postEntity = postService.글상세보기(id);
+
+        if (postEntity.getUser().getId() != principal.getId()) {
+            return new ResponseDto<String>(-1, "해당 게시글을  수정할 권한이 없습니다.", null);
+        }
+
+        postService.글수정하기(post, id);
+
+        return new ResponseDto<String>(1, "수정성공.", null);
     }
 
     // POST 글쓰기 /post - 글목록으로 가기 - 인증 O
